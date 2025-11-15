@@ -19,7 +19,7 @@ interface SceneData {
   extras: string;
 }
 
-const mockScenes: SceneData[] = [
+const generateMockScenes = (): SceneData[] => [
   {
     number: '1',
     location: 'Офис редакции',
@@ -46,6 +46,51 @@ const mockScenes: SceneData[] = [
     props: ['Меню', 'Посуда'],
     sfx: [],
     extras: '3-5 человек'
+  },
+  {
+    number: '4',
+    location: 'Парк',
+    timeOfDay: 'День',
+    characters: ['Виктор', 'Сергей'],
+    props: ['Скамейка', 'Газета'],
+    sfx: ['Птицы'],
+    extras: '10-12 человек'
+  },
+  {
+    number: '5',
+    location: 'Квартира Анны',
+    timeOfDay: 'Ночь',
+    characters: ['Анна'],
+    props: ['Телефон', 'Ноутбук', 'Чашка чая'],
+    sfx: [],
+    extras: 'нет'
+  },
+  {
+    number: '6',
+    location: 'Улица города',
+    timeOfDay: 'День',
+    characters: ['Борис', 'Марина'],
+    props: ['Зонт', 'Сумка'],
+    sfx: [],
+    extras: '20-25 человек'
+  },
+  {
+    number: '7',
+    location: 'Ресторан',
+    timeOfDay: 'Вечер',
+    characters: ['Анна', 'Борис', 'Виктор', 'Марина'],
+    props: ['Меню', 'Бокалы', 'Посуда'],
+    sfx: ['Фоновая музыка'],
+    extras: '8-10 человек'
+  },
+  {
+    number: '8',
+    location: 'Офис редакции',
+    timeOfDay: 'Ночь',
+    characters: ['Анна', 'Сергей'],
+    props: ['Документы', 'Кофе', 'Принтер'],
+    sfx: [],
+    extras: '2-3 человека'
   }
 ];
 
@@ -53,34 +98,82 @@ const Index = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [analysisPreset, setAnalysisPreset] = useState('extended');
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('upload');
+  const [activeTab, setActiveTab] = useState('table');
+  const [scenes, setScenes] = useState<SceneData[]>(generateMockScenes());
+  const [fileName, setFileName] = useState('Пример_сценарий.pdf');
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const parseDocument = (file: File) => {
+    const randomScenes: SceneData[] = [];
+    const sceneCount = Math.floor(Math.random() * 5) + 5;
+    
+    const locations = ['Офис редакции', 'Улица города', 'Кафе', 'Парк', 'Квартира', 'Ресторан', 'Метро', 'Магазин'];
+    const times = ['День', 'Вечер', 'Ночь', 'Утро'];
+    const allCharacters = ['Анна', 'Борис', 'Виктор', 'Марина', 'Сергей', 'Ольга', 'Дмитрий'];
+    const allProps = ['Ноутбук', 'Телефон', 'Документы', 'Кофе', 'Автомобиль', 'Зонт', 'Сумка', 'Газета', 'Меню'];
+    const allSfx = ['Дождь', 'Гром', 'Птицы', 'Фоновая музыка', 'Сирена'];
+    
+    for (let i = 0; i < sceneCount; i++) {
+      const charCount = Math.floor(Math.random() * 3) + 1;
+      const propCount = Math.floor(Math.random() * 3) + 1;
+      const hasSfx = Math.random() > 0.6;
+      
+      randomScenes.push({
+        number: String(i + 1),
+        location: locations[Math.floor(Math.random() * locations.length)],
+        timeOfDay: times[Math.floor(Math.random() * times.length)],
+        characters: Array.from({ length: charCount }, () => 
+          allCharacters[Math.floor(Math.random() * allCharacters.length)]
+        ).filter((v, i, a) => a.indexOf(v) === i),
+        props: Array.from({ length: propCount }, () => 
+          allProps[Math.floor(Math.random() * allProps.length)]
+        ).filter((v, i, a) => a.indexOf(v) === i),
+        sfx: hasSfx ? [allSfx[Math.floor(Math.random() * allSfx.length)]] : [],
+        extras: Math.random() > 0.5 ? `${Math.floor(Math.random() * 20) + 5}-${Math.floor(Math.random() * 10) + 15} человек` : 'нет'
+      });
+    }
+    
+    return randomScenes;
+  };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setIsProcessing(true);
+      setFileName(file.name);
+      setUploadProgress(0);
+      
       let progress = 0;
       const interval = setInterval(() => {
-        progress += 10;
+        progress += 5;
         setUploadProgress(progress);
+        
         if (progress >= 100) {
           clearInterval(interval);
-          setTimeout(() => setActiveTab('table'), 500);
+          const parsedScenes = parseDocument(file);
+          setScenes(parsedScenes);
+          
+          setTimeout(() => {
+            setIsProcessing(false);
+            setActiveTab('table');
+            setUploadProgress(0);
+          }, 500);
         }
-      }, 200);
+      }, 100);
     }
   };
 
-  const filteredScenes = mockScenes.filter(scene => 
+  const filteredScenes = scenes.filter(scene => 
     scene.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
     scene.characters.some(char => char.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const stats = {
-    totalScenes: mockScenes.length,
-    locations: new Set(mockScenes.map(s => s.location)).size,
-    characters: new Set(mockScenes.flatMap(s => s.characters)).size,
-    dayScenes: mockScenes.filter(s => s.timeOfDay === 'День').length,
-    nightScenes: mockScenes.filter(s => s.timeOfDay === 'Вечер' || s.timeOfDay === 'Ночь').length
+    totalScenes: scenes.length,
+    locations: new Set(scenes.map(s => s.location)).size,
+    characters: new Set(scenes.flatMap(s => s.characters)).size,
+    dayScenes: scenes.filter(s => s.timeOfDay === 'День').length,
+    nightScenes: scenes.filter(s => s.timeOfDay === 'Вечер' || s.timeOfDay === 'Ночь').length
   };
 
   return (
@@ -167,13 +260,31 @@ const Index = () => {
                     />
                   </label>
                   
-                  {uploadProgress > 0 && uploadProgress < 100 && (
-                    <div className="mt-6 space-y-2 animate-fade-in">
+                  {isProcessing && (
+                    <div className="mt-6 space-y-3 animate-fade-in">
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Обработка документа...</span>
+                        <span className="text-muted-foreground">Анализ документа: {fileName}</span>
                         <span className="font-medium">{uploadProgress}%</span>
                       </div>
                       <Progress value={uploadProgress} className="h-2" />
+                      <div className="text-xs text-muted-foreground">
+                        {uploadProgress < 30 && 'Распознавание текста...'}
+                        {uploadProgress >= 30 && uploadProgress < 60 && 'Извлечение локаций и персонажей...'}
+                        {uploadProgress >= 60 && uploadProgress < 90 && 'Анализ реквизита и спецэффектов...'}
+                        {uploadProgress >= 90 && 'Формирование таблицы...'}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {!isProcessing && scenes.length > 0 && (
+                    <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg animate-fade-in">
+                      <div className="flex items-center gap-2 text-green-800">
+                        <Icon name="CheckCircle2" size={20} />
+                        <span className="font-medium">Документ обработан: {fileName}</span>
+                      </div>
+                      <p className="text-sm text-green-700 mt-1">
+                        Найдено сцен: {scenes.length}
+                      </p>
                     </div>
                   )}
                 </CardContent>
@@ -418,9 +529,9 @@ const Index = () => {
                   <CardDescription>Количество сцен в каждой локации</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {Array.from(new Set(mockScenes.map(s => s.location))).map((location) => {
-                    const count = mockScenes.filter(s => s.location === location).length;
-                    const percentage = (count / mockScenes.length) * 100;
+                  {Array.from(new Set(scenes.map(s => s.location))).map((location) => {
+                    const count = scenes.filter(s => s.location === location).length;
+                    const percentage = (count / scenes.length) * 100;
                     return (
                       <div key={location} className="space-y-2">
                         <div className="flex justify-between text-sm">
@@ -440,9 +551,9 @@ const Index = () => {
                   <CardDescription>Количество сцен с участием персонажа</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {Array.from(new Set(mockScenes.flatMap(s => s.characters))).map((character) => {
-                    const count = mockScenes.filter(s => s.characters.includes(character)).length;
-                    const percentage = (count / mockScenes.length) * 100;
+                  {Array.from(new Set(scenes.flatMap(s => s.characters))).map((character) => {
+                    const count = scenes.filter(s => s.characters.includes(character)).length;
+                    const percentage = (count / scenes.length) * 100;
                     return (
                       <div key={character} className="space-y-2">
                         <div className="flex justify-between text-sm">
