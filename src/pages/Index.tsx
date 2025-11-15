@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import * as XLSX from 'xlsx';
 import Icon from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -174,6 +175,66 @@ const Index = () => {
     characters: new Set(scenes.flatMap(s => s.characters)).size,
     dayScenes: scenes.filter(s => s.timeOfDay === 'День').length,
     nightScenes: scenes.filter(s => s.timeOfDay === 'Вечер' || s.timeOfDay === 'Ночь').length
+  };
+
+  const exportToXLSX = () => {
+    const data = scenes.map(scene => ({
+      '№': scene.number,
+      'Локация': scene.location,
+      'Время суток': scene.timeOfDay,
+      'Персонажи': scene.characters.join(', '),
+      'Реквизит': scene.props.join(', '),
+      'Спецэффекты': scene.sfx.join(', ') || '—',
+      'Массовка': scene.extras
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Сцены');
+    
+    ws['!cols'] = [
+      { wch: 5 },
+      { wch: 20 },
+      { wch: 12 },
+      { wch: 25 },
+      { wch: 25 },
+      { wch: 20 },
+      { wch: 15 }
+    ];
+
+    const timestamp = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `ScriptFlow_Сцены_${timestamp}.xlsx`);
+  };
+
+  const exportToCSV = () => {
+    const headers = ['№', 'Локация', 'Время суток', 'Персонажи', 'Реквизит', 'Спецэффекты', 'Массовка'];
+    const rows = scenes.map(scene => [
+      scene.number,
+      scene.location,
+      scene.timeOfDay,
+      scene.characters.join(', '),
+      scene.props.join(', '),
+      scene.sfx.join(', ') || '—',
+      scene.extras
+    ]);
+
+    const csvContent = [
+      headers.join(';'),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(';'))
+    ].join('\n');
+
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    const timestamp = new Date().toISOString().slice(0, 10);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `ScriptFlow_Сцены_${timestamp}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -577,11 +638,11 @@ const Index = () => {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-4">
-                  <Button size="lg" className="h-24 flex-col gap-2">
+                  <Button size="lg" className="h-24 flex-col gap-2" onClick={exportToXLSX}>
                     <Icon name="FileSpreadsheet" size={32} />
                     <span>Экспорт в XLSX</span>
                   </Button>
-                  <Button size="lg" variant="outline" className="h-24 flex-col gap-2">
+                  <Button size="lg" variant="outline" className="h-24 flex-col gap-2" onClick={exportToCSV}>
                     <Icon name="FileText" size={32} />
                     <span>Экспорт в CSV</span>
                   </Button>
